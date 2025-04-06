@@ -1,0 +1,12 @@
+{
+  "name": "youtube",
+  "version": "1.0.0",
+  "description": "This is complete youtube Project",
+  "license": "ISC",
+  "author": "Muhammad Ali Tahir",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
