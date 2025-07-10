@@ -1,11 +1,13 @@
 class ApiResponse {
-    constructor(statusCode,  data, message= "Success"){
-        this.statusCode = statusCode,
-        this.data = data, 
-        this.message = message,
-        this.success =  statusCode < 400
-    }
+  constructor(statusCode, data, message = "Success") {
+    this.statusCode = statusCode,
+      this.data = data,
+      this.message = message,
+      this.success = statusCode < 400
+  }
 }
+
+export { ApiResponse }
 
 /*Aapke screenshot mein ApiResponse class likhi gayi hai jo successful API responses ko handle karne ke liye use hoti hai. Chaliye isko step-by-step Roman Urdu mein samajhte hain (beginner-friendly explanation ke sath):
 

@@ -1,7 +1,5 @@
 import { v2 as cloudinary } from "cloudinary"
 import fs from "fs"
-import { isNullOrUndefined } from "util"
-
 
 const fileUploader = async (localfilepath) => {
 
@@ -13,11 +11,12 @@ const fileUploader = async (localfilepath) => {
     })
 
     try {
-        if(!localfilepath) return null
-        const response = await cloudinary.uploader.upload(localfilepath,{
+        if (!localfilepath) return null
+        const response = await cloudinary.uploader.upload(localfilepath, {
             resource_type: "auto"
         })
-        console.log("File upload Completed"+ response.url)
+        //console.log("File upload Completed" + response)
+        //fs.unlinkSync(localfilepath)
         return response
     } catch (error) {
         fs.unlinkSync(localfilepath)
@@ -25,3 +24,5 @@ const fileUploader = async (localfilepath) => {
     }
 
 }
+
+export { fileUploader }

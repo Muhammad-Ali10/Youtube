@@ -17,15 +17,11 @@ export const upload =  multer({
 
 
 /*🔍 Step-by-Step Explanation of Your Code
-js
-Copy
-Edit
+ 
 import multer from "multer";
 (Ye line): Multer ko import kar rahe hain jo file uploads ko handle karta hai in Express apps.
 
-js
-Copy
-Edit
+
 const storage = multer.diskStorage({
     destination: function(req, file, cb){
         cb(null, "./public/temp")
@@ -51,9 +47,7 @@ cb (callback): callback function hai jisko call karna zaroori hota hai. Isme peh
 
 📌 Real use:
 
-js
-Copy
-Edit
+ 
 cb(null, "./public/temp");
 Ye keh raha hai "koi error nahi (null) aur file ./public/temp folder mein save karo".
 
@@ -64,31 +58,23 @@ Yahan aap file.originalname use kar rahe ho — matlab frontend se aaya hua actu
 
 📌 Real use:
 
-js
-Copy
-Edit
+ 
 cb(null, file.originalname);
 Means "koi error nahi, file ka naam usi ka rakho jo frontend se aaya hai".
 
 ⚠️ Warning: file.originalname use karna risky ho sakta hai kyunki files overwrite ho sakti hain. Production me usually aise use karte hain:
 
-js
-Copy
-Edit
+ 
 cb(null, Date.now() + '-' + file.originalname);
 📦 Final Upload Config:
-js
-Copy
-Edit
+ 
 export const upload =  multer({
     storage,
 });
 Ye upload variable banata hai jo multer middleware ko export karta hai with custom storage.
 
 ✅ How to Use It in Route
-js
-Copy
-Edit
+ 
 app.post('/upload', upload.single('myfile'), (req, res) => {
   res.send("File uploaded");
 });
@@ -100,9 +86,7 @@ File ka data aapko milta hai req.file mein.
 file:
 Ye object hota hai jisme uploaded file ki details hoti hain:
 
-js
-Copy
-Edit
+ 
 {
   fieldname: 'myfile',
   originalname: 'pic.jpg',
@@ -123,18 +107,14 @@ Callback function — aap Multer ko batate ho "kaunsi jagah save karna hai", ya 
 1. upload.array('photos', 5)
 Upload up to 5 files with same field name:
 
-js
-Copy
-Edit
+ 
 app.post('/gallery', upload.array('photos', 5), (req, res) => {
   console.log(req.files); // array of files
 });
 2. upload.fields([{ name: 'avatar' }, { name: 'resume' }])
 Different field names for multiple files:
 
-js
-Copy
-Edit
+ 
 app.post('/profile', upload.fields([
   { name: 'avatar', maxCount: 1 },
   { name: 'resume', maxCount: 1 }
@@ -145,9 +125,7 @@ app.post('/profile', upload.fields([
 3. upload.none()
 Accept only form fields, no files (useful for forms where file upload is optional but content type is multipart/form-data):
 
-js
-Copy
-Edit
+ 
 app.post('/submit', upload.none(), (req, res) => {
   console.log(req.body);
 });

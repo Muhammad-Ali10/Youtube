@@ -1,7 +1,7 @@
 import express from "express"
 import cors from "cors"
 import { errorHandler } from "./middlewares/error.middlerware.js"
-
+import cookieParser from "cookie-parser"
 const app = express()
 
 
@@ -12,7 +12,7 @@ app.use(cors({
 }))
 
 app.use(express.json({
-    limit: "16kb", 
+    limit: "16kb",
     strict: true,
     type: 'application/json'
 }))
@@ -22,15 +22,21 @@ app.use(express.urlencoded({
     limit: "16kb"
 }))
 
+
+app.use(cookieParser())
 app.use(express.static("public"))
 
 
 
 import userRouter from "./routes/user.route.js"
 
-app.use(errorHandler)
+
 
 app.use("/api/v1/users", userRouter)
 
+
+
+
+app.use(errorHandler)
 
 export { app }

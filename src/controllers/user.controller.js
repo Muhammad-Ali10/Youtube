@@ -1,5 +1,46 @@
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
+import { User } from "../models/user.model.js"
+import { fileUploader } from "../utils/cloudinary.js"
+import { ApiResponse } from "../utils/ApiResponse.js"
+import bcrypt from "bcrypt"
+import { json } from "express"
+
+
+const generateAccessTokenandRefreshToken = async (userid) => {
+
+  //iss function ma userid say user find ka raya ga or phir us user ko us ka refresh token or access token da ga
+  // Hum ek asynchronous function bana rahe hain jo userId lega aur dono tokens return karega.
+  // Ye function backend ke andar kisi bhi controller se call kiya ja sakta hai — like login ya refresh ke waqt.
+
+  const user = await User.findById(userid)
+
+  // Is line mein hum MongoDB se User model ke zariye user ko uske _id se find kar rahe hain.
+  // Ye is liye zaroori hai ke humein user ki info chahiye accessToken banane ke liye.
+
+  const accessToken = user.generateAccessToken(user)
+  //Yahan hum generateAccessToken() function ko call kar rahe hain jo JWT access token banata hai.
+  // Usko user object diya gaya hai jisme _id, email, username, fullName hota hai.
+  // Ye sari info JWT ke payload mein encode hoti hai.
+
+  const refreshToken = user.generateRefreshToken(user)
+
+  //   Ye line refresh token generate karti hai, lekin isme sirf _id hota hai.
+  // Refresh token usually zyada secure aur long-lived hota hai — like 7 din tak valid
+
+  const bcryptRefreshToken = await bcrypt.hash(refreshToken, 10)
+
+  user.refreshToken = bcryptRefreshToken
+  // Yahan hum user ke document mein refreshToken ko save kar rahe hain (in MongoDB).
+  // Iska matlab hai ke user ka token ab database mein bhi save ho gaya, taake refresh ke waqt match kar sakein.
+
+  await user.save({ validateBeforeSave: true })
+  //   Yahan hum user ko database mein save kar rahe hain, lekin validateBeforeSave: false diya hai
+  // taake mongoose phir se saari fields validate na kare (kyunke hum sirf refreshToken update kar rahe hain)
+
+  return { accessToken, refreshToken }
+
+}
 
 const registerUser = asyncHandler(async (req, res) => {
 
@@ -13,16 +54,158 @@ const registerUser = asyncHandler(async (req, res) => {
   // check for user creation 
   // return response
 
-  const { fullName, email, username, password } = req.body
-  //console.log("email: ", email);
+  //console.log("req.body: ", req.body);
 
-  if ([fullName, email, username, password].some((feild)=> feild?.trim() === "")) {
-      throw new ApiError(400, "All is requried")
+  const { fullName, email, username, password } = req.body
+
+
+  if ([fullName, email, username, password].some((feild) => feild?.trim() === "")) {
+    throw new ApiError(400, "All is requried")
   }
+
+
+  const existsUser = await User.findOne({
+    $or: [{ username }, { email }]
+  })
+
+
+  if (existsUser) {
+    throw new ApiError(409, "User is alreay exists")
+  }
+
+  const avatarlocalpath = await req?.files?.avatar?.[0]?.path
+  //const coverImagelocalpath = await req?.files.coverImage[0]?.path
+  //console.log("req.files", req.files)
+
+
+  let coverImagelocalpath;
+
+  if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+    coverImagelocalpath = await req.files.coverImage[0].path
+  }
+
+
+
+  if (!avatarlocalpath) {
+    throw new ApiError(500, "Some thing want Wrong")
+  }
+
+  const avatar = await fileUploader(avatarlocalpath)
+
+  const coverImage = await fileUploader(coverImagelocalpath)
+
+
+
+  if (!avatar) {
+    throw new ApiError(400, "Avatar requried ")
+  }
+
+  const user = await User.create({
+    fullName,
+    avatar: avatar.url,
+    coverImage: coverImage?.url || "",
+    email,
+    password,
+    username: username.toLowerCase()
+  })
+  //console.log("user data "+ user)
+
+  const createduser = await User.findById(user._id).select("-password -refreshToken")
+
+  if (!createduser) {
+    throw new ApiError(500, "Something went wrong while registred")
+  }
+
+  return res.status(201).json(
+    new ApiResponse(200, createduser, "User SuccessFull created")
+  )
 
 })
 
-export { registerUser }
+const loginUser = asyncHandler(async (req, res) => {
+
+
+  //get user data for body 
+  //username or emali
+  //find user 
+  //password check
+  //access token and refersh token
+  //save in cookies
+
+  const { username, email, password } = req.body
+  console.log(req?.body)
+
+
+  if (!username || !email) {
+    throw new ApiError(400, "All is requried")
+  }
+
+  const user = await User.findOne({
+    $or: [{ username, email }]
+  })
+  if (!user) {
+    throw new ApiError(409, "User does not exist")
+  }
+  //iss time is ka pass refresh token ni ha or hum na nich iss user ko updata ke a ha jis ma refresh token ha
+  //console.log(user)
+
+  const isPasswordValidate = await user.isPasswordCorrect(password)
+ 
+  if (!isPasswordValidate) {
+    throw new ApiError(409, "Password is wrong")
+  }
+
+  const { accessToken, refreshToken } = await generateAccessTokenandRefreshToken(user._id)
+
+  //const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+//iss place py hum na updata ke ha user ko
+
+// const user = await User.findById(id)
+// To user ek Mongoose document hota hai — isme sirf data hi nahi, balke Mongoose ke extra methods bhi hotay hain jaise .save(), .validate(), etc.
+
+// Lekin agar aapko sirf user ka asal data chahiye (jo DB mein hai), to aap use karte ho:
+// user._doc
+  const loggedInUser = {...user._doc}
+  console.log(loggedInUser)
+
+  delete loggedInUser.password
+  delete loggedInUser.refreshToken
+
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "Strict"
+  }
+
+   return res.status(200)
+  .cookie("accessToken", accessToken, options)
+  .cookie("refreshToken", refreshToken, options)
+  .json(new ApiResponse(200, {
+    user: loggedInUser,
+    accessToken,
+    refreshToken
+  }, "User logged in successfully"))
+
+
+})
+export { registerUser, loginUser }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
