@@ -4,7 +4,7 @@ import { User } from "../models/user.model.js"
 import { fileUploader } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import bcrypt from "bcrypt"
-import { json } from "express"
+import jwt from "jsonwebtoken";
 
 
 const generateAccessTokenandRefreshToken = async (userid) => {
@@ -150,7 +150,7 @@ const loginUser = asyncHandler(async (req, res) => {
   //console.log(user)
 
   const isPasswordValidate = await user.isPasswordCorrect(password)
- 
+
   if (!isPasswordValidate) {
     throw new ApiError(409, "Password is wrong")
   }
@@ -158,14 +158,14 @@ const loginUser = asyncHandler(async (req, res) => {
   const { accessToken, refreshToken } = await generateAccessTokenandRefreshToken(user._id)
 
   //const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
-//iss place py hum na updata ke ha user ko
+  //iss place py hum na updata ke ha user ko
 
-// const user = await User.findById(id)
-// To user ek Mongoose document hota hai — isme sirf data hi nahi, balke Mongoose ke extra methods bhi hotay hain jaise .save(), .validate(), etc.
+  // const user = await User.findById(id)
+  // To user ek Mongoose document hota hai — isme sirf data hi nahi, balke Mongoose ke extra methods bhi hotay hain jaise .save(), .validate(), etc.
 
-// Lekin agar aapko sirf user ka asal data chahiye (jo DB mein hai), to aap use karte ho:
-// user._doc
-  const loggedInUser = {...user._doc}
+  // Lekin agar aapko sirf user ka asal data chahiye (jo DB mein hai), to aap use karte ho:
+  // user._doc
+  const loggedInUser = { ...user._doc }
   console.log(loggedInUser)
 
   delete loggedInUser.password
@@ -178,18 +178,81 @@ const loginUser = asyncHandler(async (req, res) => {
     sameSite: "Strict"
   }
 
-   return res.status(200)
-  .cookie("accessToken", accessToken, options)
-  .cookie("refreshToken", refreshToken, options)
-  .json(new ApiResponse(200, {
-    user: loggedInUser,
-    accessToken,
-    refreshToken
-  }, "User logged in successfully"))
+  return res.status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(new ApiResponse(200, {
+      user: loggedInUser,
+      accessToken,
+      refreshToken
+    }, "User logged in successfully"))
 
 
 })
-export { registerUser, loginUser }
+
+
+const logoutUser = asyncHandler(async (req, res) => {
+
+  await User.findByIdAndUpdate(req.user._id, {
+    refreshToken: undefined // Yahan hum user ke refreshToken ko undefined set kar rahe hain, taake wo logout ho jaye.
+  }, { new: true })
+
+const options = {
+  httpOnly: true,
+  secure: true
+}
+
+return res.status(200)
+.clearCookie("accessToken", options)
+.clearCookie("refreshToken", options)
+.json(new ApiResponse(200),{},"user logout successfull")
+
+})
+
+const refershAccessToken = asyncHandler(async(req, res)=>{
+  //get refersh token from user 
+  //Check user have a refers token 
+  // decoded user refersh token
+  //and check the refersh token is valid
+  //if refersh token is valid the incomingrefershToken is not different with databaserefersh token
+  //then set new access token and refersh token 
+
+  try {
+    const incomingrefershToken = req.cookie.refreshToken || req.body.refreshToken
+  
+    if(!incomingrefershToken){
+      throw new ApiError(401, "unauthorize access")
+    }
+  
+    const decodedToken  = await varifyJWT(incomingrefershToken, process.env.REFRESH_TOKEN_SECRET)
+  
+    const user = await User.findById(decodedToken._id)
+  
+    if(!user)
+    {
+      throw new ApiError(401, "Invalid refersh Token")
+    }
+  
+    const {accessToken, newrefreshToken} = generateAccessTokenandRefreshToken(user._id)
+  
+    const options={
+      httpOnly: true,
+      secure: true
+    }
+  
+    return res.status(200)
+    .cookie("accessToken", accessToken,options)
+    .cookie("refreshToken", newrefreshToken,options)
+    .json(new ApiResponse(200, {
+      refreshToken: newrefreshToken,
+      accessToken
+    },"Access token  Refershed"))
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid Refersh token")
+  }
+
+})
+export { registerUser, loginUser, logoutUser, refershAccessToken }
 
 
 
