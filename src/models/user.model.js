@@ -25,6 +25,9 @@ const userSchema = new Schema({
     type: String,
     required: true, 
   },
+  avatarId: {
+    type: String,
+  },
   coverImage: {
     type: String,
   },

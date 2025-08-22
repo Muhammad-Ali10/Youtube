@@ -16,7 +16,7 @@ const fileUploader = async (localfilepath) => {
             resource_type: "auto"
         })
         //console.log("File upload Completed" + response)
-        //fs.unlinkSync(localfilepath)
+        fs.unlinkSync(localfilepath)
         return response
     } catch (error) {
         fs.unlinkSync(localfilepath)
