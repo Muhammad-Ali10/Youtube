@@ -6,9 +6,15 @@ const videoSchema = new Schema({
         type: String,  //cloudinary
         required: true
     },
+    videopublicid:{
+        type: String
+    },
     thumbnail: {
         type: String, //cloudinary
         required: true
+    },
+    thumbnailpublicid: {
+        type: String
     },
     owner: {
         type: Schema.Types.ObjectId,
@@ -31,9 +37,11 @@ const videoSchema = new Schema({
         default: 0,
     },
     isPublished: {
-        type: true,
+        type: Boolean,
         default: false
-    }
+    },
+
+ 
 }, { timestamps: true })
 
 
